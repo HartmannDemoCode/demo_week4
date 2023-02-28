@@ -40,7 +40,7 @@ function App() {
             <PeopleForm setPeople={setPeople} people={people} person={person} setPerson={setPerson} />
             <ImageViewer url="https://higheredparent.com/wp-content/uploads/2018/02/cultural.jpg" width={430} height={70} />
           </Col>
-          <Col xs={7}><PeopleViewer people={people} setPeople={setPeople} setPerson={setPerson} /></Col>
+          <Col xs={8}><PeopleViewer people={people} setPeople={setPeople} setPerson={setPerson} /></Col>
         </Row>
       </Container>
     </div>
@@ -87,6 +87,7 @@ const PeopleForm = ({ setPeople, people, setPerson, person }: PeopleFormProps) =
       });
     setPerson(emptyPerson);
   };
+
   const doPut = (person: Person) => {
     fetch(`http://localhost:3008/person/${person.id}`, {
       method: "PUT",
@@ -126,7 +127,7 @@ const PeopleForm = ({ setPeople, people, setPerson, person }: PeopleFormProps) =
     alignItems: "center",
     padding: "10px",
     border: "1px solid gray",
-    margin: "10px"
+    // margin: "10px"
   };
 
   return (
@@ -159,11 +160,12 @@ const PeopleForm = ({ setPeople, people, setPerson, person }: PeopleFormProps) =
 type PeopleViewerProps = {
   people: Person[] // in order to display people
   setPeople: Dispatch<SetStateAction<Person[]>> // in order to delete a person
-  setPerson: Dispatch<SetStateAction<Person>> // in order to edit a person
+  setPerson: Dispatch<SetStateAction<Person>> // in order to edit a person in the PeopleForm component.
 }
 
 const PeopleViewer = ({ people, setPeople, setPerson }: PeopleViewerProps) => {
-
+  const [sortParam, setSortParam] = useState<keyof Person>('id');
+  const [sortOrder, setSortOrder] = useState("asc");
   const deletePerson = (evt: React.MouseEvent<HTMLButtonElement>) => {
     const id = evt.currentTarget.id;
     fetch(`http://localhost:3008/person/${id}`, {
@@ -181,6 +183,40 @@ const PeopleViewer = ({ people, setPeople, setPerson }: PeopleViewerProps) => {
     setPerson(people.find((person) => person.id === parseInt(id))!);
   };
 
+  const handleSort = (evt: React.MouseEvent<HTMLTableCellElement>) => {
+    const param = evt.currentTarget.innerText.toLowerCase() as keyof Person;
+    if (sortParam === param) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortParam(param);
+      setSortOrder("asc");
+    }
+  };
+
+  const sortPeople = () => {
+    const sortedPeople = people.slice().sort((p1, p2) => {
+      const column: keyof Person = sortParam || 'name'; // keyof is a type operator necessary to make TypeScript understand that we are using a key of the Person type
+      const direction:number = sortOrder === 'asc' ? 1 : -1;
+      // return p1[column] < p2[column] ? -1 * direction : p1[column] > p2[column] ? 1 * direction : 0;
+
+      if (p1[column] < p2[column]) {
+        return -1 * direction;
+      }
+      if (p1[column] > p2[column]) {
+        return 1 * direction;
+      }
+      return 0;
+    });
+    // console.log('SORTED PEOPLE', sortedPeople);
+    return sortedPeople;
+  };
+
+  useEffect(() => {
+    const sortedPeople = sortPeople();
+    // console.log('USE EFFECT', sortParam, sortOrder, sortedPeople);
+    setPeople([...sortedPeople])
+  }, [sortParam, sortOrder]);
+
   const containerStyle = {
     maxHeight: '100vh', // Set a maximum height of 400 pixels
     overflowY: 'auto', // Enable vertical scrollbars when content exceeds the container height
@@ -190,7 +226,14 @@ const PeopleViewer = ({ people, setPeople, setPerson }: PeopleViewerProps) => {
     <div style={containerStyle}>
       <h1>People</h1>
       <table>
-        <thead><tr><th>Id</th><th>Name</th><th>Age</th><th>City</th><th>Operations</th></tr></thead>
+        <thead><tr>
+          <th onClick={handleSort}>Id 
+          {/* {sortParam === 'id' && (sortOrder === 'asc' ? '↑' : '↓')} */}
+          </th>
+          <th onClick={handleSort}>Name</th>
+          <th onClick={handleSort}>Age</th>
+          <th onClick={handleSort}>City</th>
+          <th>Operations</th></tr></thead>
         <tbody>
           {(() => { console.log("PeopleViewer is rendered"); return ""; })()}
           {people.map((person) => {
@@ -201,9 +244,7 @@ const PeopleViewer = ({ people, setPeople, setPerson }: PeopleViewerProps) => {
               <td>{person.city}</td>
               <td><button className="btn" id={person.id.toString()} onClick={deletePerson}>Delete</button><button className="btn" id={person.id.toString()} onClick={editPerson}>Edit</button></td>
             </tr>)
-          }
-          )
-          }
+          })}
         </tbody>
       </table>
     </div>
